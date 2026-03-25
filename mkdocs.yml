@@ -1,0 +1,52 @@
+site_name: Unified Branch - Network as Code
+site_description: Meraki Launchpad Lab Guide
+site_author: Cisco Meraki
+
+docs_dir: docs
+use_directory_urls: false
+
+nav:
+  - Overview: LAB-GUIDE.md
+  - Part A – CI/CD Workflows with GitHub Actions: PART-A-CICD.md
+  - Part B – Network as Code with Terraform (Optional): PART-B-TERRAFORM.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - toc.follow
+    - content.tabs.link
+    - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - pymdownx.critic
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true

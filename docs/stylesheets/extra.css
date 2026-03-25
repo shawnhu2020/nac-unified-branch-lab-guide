@@ -1,0 +1,65 @@
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #1470cc;
+  --md-primary-fg-color--light: #aacef2;
+  --md-primary-fg-color--dark: #0f5499;
+  --md-accent-fg-color: #67b346;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1470cc;
+  --md-primary-fg-color--light: #aacef2;
+  --md-primary-fg-color--dark: #093058;
+  --md-accent-fg-color: #67b346;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  color: #0f5499;
+}
+
+.md-typeset table:not([class]) {
+  margin-left: auto;
+  margin-right: auto;
+  display: table;
+}
+
+.md-content {
+  position: relative;
+}
+
+@media print {
+  .md-header, .md-footer, .md-sidebar,
+  .md-tabs, .md-top, .md-source {
+    display: none !important;
+  }
+
+  .md-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .md-main__inner {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .md-typeset img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  .md-typeset table {
+    page-break-inside: avoid;
+  }
+
+  .md-typeset .admonition,
+  .md-typeset details {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+}
