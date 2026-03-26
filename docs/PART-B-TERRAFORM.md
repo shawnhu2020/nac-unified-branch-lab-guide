@@ -13,7 +13,7 @@ In Part B, you will run Terraform directly from your local machine to deploy the
 
 By the end of Part B, you will be able to:
 
-- Clone the lab repository and configure a local `.env` file
+- Use git to clone the Network as Code lab repository and configure a local `.env` file
 - Understand the NaC YAML data model — pods variables, templates, and the `!env` tag
 - Use Terraform to merge YAML files into a rendered configuration
 - Run `terraform plan` to preview changes before applying
@@ -40,9 +40,36 @@ git --version
 python3 --version   # Expected: Python 3.11.x or later
 ```
 
-!!! tip "Hint"
-    On macOS: `brew install terraform git python`
+!!! tip "Installation hints by OS"
+    === "macOS"
+        ```bash
+        brew install terraform git python
+        ```
 
+    === "Linux (Debian / Ubuntu)"
+        ```bash
+        # Terraform
+        sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+        wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt-get update && sudo apt-get install -y terraform
+
+        # Git and Python
+        sudo apt-get install -y git python3 python3-pip
+        ```
+
+    === "Windows"
+        Install with [Chocolatey](https://chocolatey.org/) (run in an elevated PowerShell):
+        ```powershell
+        choco install terraform git python -y
+        ```
+        Or download installers manually:
+
+        - Terraform: [https://developer.hashicorp.com/terraform/install](https://developer.hashicorp.com/terraform/install)
+        - Git: [https://git-scm.com/download/win](https://git-scm.com/download/win)
+        - Python: [https://www.python.org/downloads/windows](https://www.python.org/downloads/windows)
+
+<!-- Internal note: Linux and Windows installation steps to be validated  -->
 ---
 
 ## Step 1 — Verify the Environment Is Clean
@@ -56,31 +83,28 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     !!! danger "Important"
         If **Unified Branch 1** or **Unified Branch 2** still exist, run the **Cleanup – Delete Branch Networks** workflow in GitHub Actions before proceeding. Follow the cleanup steps at the end of **[Part A](PART-A-CICD.md)**. Running `terraform apply` locally against an org that already has those networks — but no local state file — will cause errors.
 
+3. Select the **Datacenter** network, then navigate to **Network-wide > General**. Copy the value in the **Network notes** field — you will need it in Step 2.
+    ![Network notes field in Meraki Dashboard](assets/media/nw-notes.png)
 ---
 
-## Step 2 — Clone the Repository Locally
+## Step 2 — Configure Your Local Environment
 
-1. Open a terminal and clone your fork (replace `YOUR_GITHUB_USERNAME`):
+1. Open a terminal and clone the repository:
 
     ```bash
-    git clone https://github.com/YOUR_GITHUB_USERNAME/bac-lab-alpha.git
-    cd bac-lab-alpha
+    git clone [Unified Branch - Network as Code public repo]
+    cd bac-lab
     ```
 
----
-
-## Step 3 — Configure Your Local Environment
-
-1. Copy the environment variable template:
+2. Copy the environment variable template:
 
     ```bash
     cp .env.example .env
     ```
 
-2. Edit `.env` in your code editor and fill in your values and replace those lines for the same variables at the top of the file:
+3. Open `.env` in your editor. Paste the value from Step 1 and replace the following lines. 
 
     ``` { .bash .no-copy }
-    #Copy and paste the following into .env of your git repository.
     org_name=Org-XXXXXXXXXXXXXXXXXXX
 
     # ── Device serials (per-branch)
@@ -92,31 +116,41 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     branch2_ms_serial=XXXX-XXXX-XXXX
     branch2_cw_serial=XXXX-XXXX-XXXX
     ```
-
-3. Source the file to load the variables into your current shell session:
+4. Still in `.env`, add the following line and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). Save `.env` file.
 
     ```bash
-    source .env
+    MERAKI_API_KEY=[PASTE YOUR DASHBOARD API KEY HERE]
     ```
 
-4. Verify:
+5. Export all variables from `.env` into your current shell session:
+
+    ```bash
+    set -a && source .env && set +a
+    ```
+
+    !!! info "Why `set -a`?"
+        A plain `source .env` sets variables as **shell-local** only — builtins like `echo` can read them, but child processes like `terraform` cannot. `set -a` (allexport) tells the shell to automatically **export** every assignment as a proper environment variable, making them visible to any program launched from this session. `set +a` turns allexport off again afterward.
+
+6. Verify that the variables are correctly exported:
 
     ```bash
     echo "Org:              $org_name"
     echo "API key set:      $([ -n "$MERAKI_API_KEY" ] && echo yes || echo NO)"
     echo "Branch 1 MX:      $branch1_mx_serial"
     echo "Branch 2 MX:      $branch2_mx_serial"
+    # Confirm variables are exported (visible to child processes)
+    env | grep org_name
     ```
 
     !!! danger "Important"
         The `.env` file is listed in `.gitignore` and will **not** be committed to Git. Never add it manually to version control — it contains your API key.
 
     !!! warning "Note"
-        If you see `environment variable not set` errors later, run `source .env` again in the same terminal. Variables set with `source` only apply to the current shell session.
+        If you see `environment variable not set` errors later, re-run `set -a && source .env && set +a` in the **same terminal** you will use for Terraform. Variables only persist for the current shell session — opening a new tab starts fresh.
 
 ---
 
-## Step 4 — Understand the Data Model
+## Step 3 — Understand the Data Model
 
 Before running Terraform, spend a few minutes reading through the data model files.
 
@@ -127,40 +161,52 @@ Key things to notice:
 ```yaml
 meraki:
   domains:
-    - name: !env domain
+    - name: US                        # hardcoded domain — matches your Meraki org region
+      administrator:
+        name: admin                   # org-level admin account name
       organizations:
-        - name: !env org_name      # your lab org — read from the env var you set
-          managed: false           # targets an EXISTING org, does not create one
+        - name: !env org_name         # reads org name from your .env at runtime
           networks:
-            - name: !env vpn_hub_network_name
-              managed: false       # Datacenter is reference-only — Terraform won't modify it
             - name: Unified Branch 1
-              devices:
-                - serial: !env branch1_mx_serial   # claims the MX85
-                  name: Branch1-appliance-01
-                - serial: !env branch1_ms_serial   # claims the MS250
-                  name: Branch1-MS250-01
-                - serial: !env branch1_cw_serial   # claims the CW9172H
-                  name: Branch1-ap-01
-              templates: [nw_setup, nw_management, switch, wireless, app_settings,
-                          app_vlans, app_ports, app_fw, app_content, app_static_routes,
-                          app_vpn, group_policies]
+              templates: [nw_setup, nw_management, app_ports, switch,
+                          small_branch_inventory, wan_dhcp_dhcp, wireless,
+                          app_settings, app_spoke, app_vlans, app_fw, app_ts,
+                          app_content, app_intrusion, app_mal,
+                          app_static_routes, group_policies]
               variables:
+                appliance_01_name: Unified Branch Network 1 Appliance
+                appliance_01_serial: !env branch1_mx_serial    # claims the MX85
+                access_switch_01_name: Unified Branch Network 1 Switch
+                access_switch_01_serial: !env branch1_ms_serial  # claims the MS250
+                ap_01_name: Unified Branch Network 1 Access Point
+                ap_01_serial: !env branch1_cw_serial           # claims the CW9172H
                 vlan10_subnet: 10.1.10.0/24
                 vlan10_appliance_ip: 10.1.10.1
-                vpn_hub_network_name: !env vpn_hub_network_name
-                time_zone: America/New_York
-                # ...
+                vlan20_subnet: 10.1.20.0/24
+                vlan20_appliance_ip: 10.1.20.1
+                # ... more VLANs and settings ...
+                hub_network_name: !env vpn_hub_network_name    # VPN hub reference
+                time_zone: America/Los_Angeles
+                wan1_limit_down: 400000                        # kbps
+                wan1_limit_up: 400000
+
+            - name: Unified Branch 2
+              templates: [...]        # same template list as Branch 1
+              variables:
+                appliance_01_serial: !env branch2_mx_serial
+                # ... Branch 2 uses 10.2.x.x subnets ...
+
+            - name: !env vpn_hub_network_name
+              managed: false          # Datacenter is reference-only — never modified
 ```
 
 | Key | What it means |
 |-----|--------------|
-| `!env <name>` | Reads a value from an environment variable at runtime |
-| `managed: false` (org) | Terraform targets this existing org by name — does not create it |
-| `managed: false` (Datacenter) | Reference-only — Terraform won't modify the Datacenter network |
-| `devices: [...]` | Serial numbers to claim, each given a friendly name |
-| `templates: [...]` | References reusable config blocks in `data/templates-*.nac.yaml` |
+| `!env <name>` | Reads a value from an environment variable at runtime — keeps secrets out of the file |
+| `templates: [...]` | References reusable config blocks defined in `data/templates-*.nac.yaml` |
 | `variables: {...}` | Per-branch values substituted into templates at apply time |
+| `appliance_01_serial: !env ...` | Device serials injected at runtime — devices are claimed into the network |
+| `managed: false` (Datacenter) | Reference-only — Terraform reads it for VPN hub config but will never modify or delete it |
 
 Also explore the template files:
 
@@ -178,7 +224,7 @@ Also explore the template files:
 
 ---
 
-## Step 5 — Render the Merged Configuration
+## Step 4 — Render the Merged Configuration
 
 The first Terraform run merges all YAML data files into a single rendered configuration. This is a **local-only** operation — no Meraki API calls are made.
 
@@ -219,7 +265,7 @@ The first Terraform run merges all YAML data files into a single rendered config
 
 ---
 
-## Step 6 — Plan and Deploy to Meraki
+## Step 5 — Plan and Deploy to Meraki
 
 Now run Terraform from the root of the project to deploy the branch networks.
 
@@ -279,21 +325,28 @@ Now run Terraform from the root of the project to deploy the branch networks.
 
 ---
 
-## Step 7 — Verify in the Meraki Dashboard
+## Step 6 — Verify in the Meraki Dashboard
 
 1. Return to [https://dashboard.meraki.com](https://dashboard.meraki.com) in your lab organization.
 
 2. In the network selector, confirm **Unified Branch 1** and **Unified Branch 2** now appear.
 
 3. Select **Unified Branch 1** and verify:
-    - **Network-wide > General** — time zone and settings match `pods_variables.nac.yaml`
-    - **Security & SD-WAN > Addressing & VLANs** — Data (10), Voice (20), IoT (30), Guest (50), Mgmt (999) VLANs present
+    - **Network-wide > General** — time zone and address match `pods_variables.nac.yaml`
+    - **Security & SD-WAN > Addressing & VLANs** — Data (10), Voice (20), IoT (30), Guest (50), and Infra (999) VLANs present
     - **Wireless > SSIDs** — Data and Guest SSIDs configured
+    - **Security & SD-WAN > VPN Status** — the **Datacenter** remote peer should show green
+    - **Security & SD-WAN > Appliance Status**, then navigate to **Tools > Ping**, configure the following and click **Ping**. You should see successful replies, confirming the VPN tunnel is up between the branch and Datacenter.
+        - Source IP Address: `VLAN 10`
+        - Destination IP Address: `10.255.20.1` (Gateway IP for Voice VLAN on the Datacenter side)
 
-4. Check **Organization > Inventory** to confirm MX85, MS250, and CW9172H are claimed and assigned to each branch network.
+    !!! note
+        VPN connectivity between branch networks and Datacenter may take a couple of minutes to establish after `terraform apply` completes.
+
+4. Check **Organization > Inventory** to confirm MX85, MS250, and CW9172H for both branches are claimed and assigned to the correct networks.
 
     !!! tip "Hint"
-        Navigate to **Organization > API & Webhooks** to see the full API call log. You will see `POST /networks/{id}/devices/claim` and all the configuration calls — exactly what Terraform executed.
+        Navigate to **Organization > Change Log** to see the full API call log. You will see `POST api/v1/networks/{id}/devices/claim` alongside all the configuration calls — exactly what Terraform executed on your behalf.
 
     !!! tip "Hint"
         Run `terraform plan` again after `terraform apply` completes. It should report `No changes` — confirming the deployed state matches the data model exactly. This is what the Idempotency Test checks in Part A's CI/CD pipeline.
@@ -308,7 +361,7 @@ You have:
 - Configured a local `.env` file with your API key and branch serial numbers
 - Explored the NaC YAML data model — pods variables, templates, the `!env` tag, and device claiming
 - Used Terraform locally to render, plan, and deploy two fully-configured Unified Branch networks
-- Claimed physical MX85, MS250, and CW9172H hardware into your Meraki organization
+- Established the Auto-VPN between branches and datacenter networks and verified the connectivity by running ping test
 - Verified the deployed configuration in the Meraki Dashboard
 
 !!! info "Keep Learning"

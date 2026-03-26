@@ -114,7 +114,26 @@ Forking creates your own copy of the lab repo under your GitHub account. This is
 
 ---
 
-## Step 5 — Add Your Meraki API Key as a GitHub Secret
+## Step 5 — Generate Your Meraki API Key
+
+The pipeline authenticates to Meraki using a personal API key tied to your dashboard account. Follow these steps to generate one. **If you already have an API key for your lab account, skip this step.**
+
+1. In the Meraki Dashboard, click your **profile icon** in the top-right corner and select **My profile**.
+
+    ![Meraki Dashboard profile menu](assets/media/image11.png){ width="60%" }
+
+2. Scroll down to the **API access** section and click **Generate new API key**. 
+
+3. Copy the key immediately and save it somewhere safe (e.g. a password manager). **It will only be displayed once** — if you navigate away without copying it, you will need to revoke it and generate a new one.
+
+    ![Meraki Dashboard profile menu](assets/media/image12.png){ width="60%" }
+
+    !!! warning "Keep your API key private"
+        Your API key has the same access level as your dashboard login. Never share it, commit it to a repository, or paste it into chat. You will store it securely as a GitHub Secret in the next step.
+
+---
+
+## Step 6 — Add Your Meraki API Key as a GitHub Secret
 
 The pipeline reads your API key from a GitHub Secret — an encrypted value that GitHub injects into workflow runs at runtime. It is never stored in the repository files.
 
@@ -136,7 +155,7 @@ The pipeline reads your API key from a GitHub Secret — an encrypted value that
 
 ---
 
-## Step 6 — Configure Your Lab Pod Details in .env
+## Step 7 — Configure Your Lab Pod Details in .env
 
 The `.env` file at the root of the repo stores non-secret variables that the pipeline loads at runtime: your org name, serial numbers, and hub network name. Unlike the API key, these are committed to the repo.
 
@@ -165,7 +184,7 @@ The `.env` file at the root of the repo stores non-secret variables that the pip
 
 ---
 
-## Step 7 — Create a GitHub Environment
+## Step 8 — Create a GitHub Environment
 
 The **Plan** and **Deploy** jobs reference a GitHub Environment for scoped secrets and optional approval gates.
 
@@ -188,7 +207,7 @@ The **Plan** and **Deploy** jobs reference a GitHub Environment for scoped secre
 
 ---
 
-## Step 8 — Run the Deploy Pipeline
+## Step 9 — Run the Deploy Pipeline
 
 You are now ready to trigger the full CI/CD pipeline.
 
@@ -245,7 +264,7 @@ As the pipeline runs, expand each job to observe what is happening:
 
 ---
 
-## Step 9 — Verify in the Meraki Dashboard
+## Step 10 — Verify in the Meraki Dashboard
 
 1. Return to [https://dashboard.meraki.com](https://dashboard.meraki.com) and confirm you are in the lab organization.
 
@@ -271,7 +290,7 @@ As the pipeline runs, expand each job to observe what is happening:
 
 ---
 
-## Step 10 — Explore Syntax Validation
+## Step 11 — Explore Syntax Validation
 
 The **Syntax Validation** workflow validates your YAML data files against `schema.yaml` using `iac-validate`. In this step you will break a schema rule and watch the pipeline catch it.
 
@@ -307,7 +326,7 @@ Change `max=10` back to `max=128` and commit.
 
 ---
 
-## Step 11 — Explore Semantic (Business Rule) Validation
+## Step 12 — Explore Semantic (Business Rule) Validation
 
 The **Semantic Validation** workflow uses custom Python rules in the `rules/` folder to enforce business policies that go beyond what a schema can express.
 
@@ -349,7 +368,7 @@ Revert the admin name back to its original value `admin` and commit.
 
 ---
 
-## Step 12 — Scheduled Integration Tests
+## Step 13 — Scheduled Integration Tests
 
 The **Scheduled Integration Test** workflow runs automatically every 6 hours via cron. It re-runs all Robot Framework tests against the live Dashboard to detect configuration drift — without deploying anything.
 
