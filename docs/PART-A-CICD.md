@@ -403,6 +403,25 @@ on:
 
 ---
 
+## Step 14 — Disable the Scheduled Workflow After Teardown
+
+Once the lab networks are destroyed, the **Scheduled Integration Test** workflow will continue to run every 6 hours and fail — because the Meraki networks it tests no longer exist. To avoid noisy failure notifications and unnecessary API calls, disable the schedule after teardown.
+
+### Disable the Workflow
+
+1. In your GitHub repository, go to **Actions** and select **Scheduled Integration Test** from the left sidebar.
+2. Click the **⋯** (three-dot) menu in the top-right corner of the workflow runs list.
+3. Select **Disable workflow**.
+4. Confirm the workflow now shows a **"This workflow was disabled manually."** banner.
+
+!!! tip "Re-enabling the Schedule"
+    If you redeploy the lab networks later (e.g., by re-running the deploy pipeline), simply return to the same menu and select **Enable workflow** to resume automatic drift detection.
+
+!!! warning "Why This Matters"
+    Leaving a scheduled workflow running against deleted infrastructure will produce repeated failures. These failures generate GitHub notifications and, if you have branch protection rules or status checks configured, can create confusion about the health of your repository. Always disable schedules that no longer have a valid target.
+
+---
+
 ## Part A Complete!
 
 You have successfully:
@@ -416,6 +435,7 @@ You have successfully:
 - Introduced and observed a **syntax violation** (schema max length) caught by the Validate stage
 - Introduced and observed a **semantic violation** (banned admin name) caught by the business rules engine
 - Triggered a **scheduled integration test** and understood its role in Day-2 drift detection
+- Disabled the scheduled workflow after teardown to prevent spurious failures
 
 ---
 
