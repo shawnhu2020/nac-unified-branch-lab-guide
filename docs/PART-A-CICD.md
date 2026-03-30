@@ -1,4 +1,4 @@
-# Part A — CI/CD Workflows with GitHub Actions
+# Part A — Network as Code with GitHub Actions CI/CD
 
 In this lab, you will use [GitHub Actions](https://docs.github.com/en/actions) to deploy and validate two Unified Branch networks — entirely from the cloud, with no software installed on your local machine. You will trigger a full CI/CD pipeline, explore each automated stage, and deliberately introduce configuration errors to see the pipeline catch them.
 

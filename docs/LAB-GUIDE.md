@@ -114,6 +114,6 @@ Part B requires the following tools installed on your laptop:
 
 ## Ready to Start?
 
-**Proceed to [Part A — CI/CD Workflows with GitHub Actions](PART-A-CICD.md).**
+**Proceed to [Part A — Network as Code with GitHub Actions CI/CD](PART-A-CICD.md).**
 
 When you have completed Part A and want to go further, continue to [Part B — Network as Code with Terraform](PART-B-TERRAFORM.md).
