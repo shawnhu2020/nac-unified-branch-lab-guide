@@ -10,7 +10,7 @@ The lab is organized into two parts:
 
 | | Part A | Part B |
 |---|---|---|
-| **Title** | CI/CD Workflows with GitHub Actions | Network as Code with Terraform |
+| **Title** | Network as Code with GitHub Actions CI/CD | Network as Code Step By Step with Terraform |
 | **Required?** | ✅ Required | ⚙️ Optional |
 | **Local installs** | None — runs entirely in the cloud | Terraform, Git, Python on your laptop |
 | **What you do** | Fork the repo, configure secrets, understand the NaC data model, trigger automated CI/CD pipelines, run validation and integration tests | Clone the repo locally, understand the NaC data model, and deploy branch networks directly from your terminal |

@@ -45,9 +45,10 @@ The full CI/CD pipeline runs these stages in sequence:
 | **Validate** | Checks Terraform formatting and runs `nac-validate` to validate the merged config against the NaC schema |
 | **Plan** | Runs `terraform plan` and saves the plan — shows exactly what will be created/changed |
 | **Deploy** | Runs `terraform apply` using the saved plan — creates the branch networks and claims the hardware |
-| **Integration Test** | Runs Robot Framework tests against the live Meraki Dashboard to verify the deployed config matches the data model |
+| **Integration Test** | Runs Robot Framework tests against the live Meraki Dashboard to verify the deployed config matches the data model, using `nac-test` |
 | **Idempotency Test** | Runs `terraform plan` again after deploy — expects zero changes, confirming the pipeline is idempotent |
 
+[nac-validate](https://github.com/netascode/nac-validate/tree/main) and [nac-test](https://github.com/netascode/nac-test) are tools used within Cisco's Network as Code (NaC) framework to ensure network configuration integrity and operational correctness through automated validation and testing.
 ---
 
 ## Step 1 — Log In and Identify Your Lab Organization
@@ -292,12 +293,16 @@ As the pipeline runs, expand each job to observe what is happening:
 
 ## Step 11 — Explore Syntax Validation
 
-The **Syntax Validation** workflow validates your YAML data files against `schema.yaml` using `iac-validate`. In this step you will break a schema rule and watch the pipeline catch it.
+Network as Code provides two levels of validation to ensure your configuration is both well-formed and logically correct: syntax and semantic validation.
+
+Syntax validation checks that your YAML configuration follows proper formatting rules—correct indentation, valid YAML structure, and proper data types. This catches basic errors like missing colons, incorrect spacing, or malformed lists.
+
+The **Syntax Validation** workflow validates your YAML data files against `schema.yaml` using `nac-validate`. In this step, you will break a schema rule and watch the pipeline catch it. Access to the full and updated schema requires a valid services subscription.
 
 ### Run the Baseline Check
 
 1. Go to **Actions > Run Syntax Validation** and click **Run workflow**. Run the workflow from **Branch: main**.
-2. Confirm it passes: look for **Success** status and `✅ Syntax Validation` .
+2. Confirm it passes: look for **Success** status and `✅ Syntax Validation`.
 
 ### Introduce a Violation
 
@@ -309,6 +314,8 @@ The **Syntax Validation** workflow validates your YAML data files against `schem
     ```
 
 2. Change `max=128` to `max=10` and commit directly to `main`.
+
+    With this change, you are introducing a limit where the organization name can be at most 10 characters long.
 
 3. Go to **Actions > Run Syntax Validation** and run it again.
 
@@ -330,6 +337,10 @@ Change `max=10` back to `max=128` and commit.
 
 The **Semantic Validation** workflow uses custom Python rules in the `rules/` folder to enforce business policies that go beyond what a schema can express.
 
+Semantic validation goes deeper than syntax by verifying that your configuration makes logical sense according to the Network as Code data model. Using the `nac-validate` tool with Yamale schemas, it ensures that field values are appropriate, required parameters are present, and relationships between configuration elements are valid. For example, it verifies that port numbers are in valid ranges, IP addresses follow correct formats, and referenced objects actually exist.
+
+Together, syntax and semantic validation help catch errors early in the development process, before configurations are deployed to production networks.
+
 ### Run the Baseline Check
 
 1. Go to **Actions > Run Semantic / Business Rule** and click **Run workflow**.
@@ -337,7 +348,7 @@ The **Semantic Validation** workflow uses custom Python rules in the `rules/` fo
 
 ### Examine the Rule
 
-Edit `rules/101_admin_name.py`. This rule rejects any administrator named `root` — a common policy to prevent use of generic privileged account names.
+Navigate to `rules/101_admin_name.py` and examine it. This rule rejects any administrator named `root` — a common policy to prevent the use of generic privileged account names. Similarly, any business rule can be coded as a semantic rule and added to the pipeline. Customers can create their own rules (using Python classes), or CX can help create the rules as needed.
 
 ### Introduce a Violation
 
@@ -352,8 +363,7 @@ Edit `rules/101_admin_name.py`. This rule rejects any administrator named `root`
 
 3. Go to **Actions > Run Semantic / Business Rule** and run it again.
 
-4. The job should **fail**. Look for the `ERROR` line citing the admin name violation. In the Artifacts
- section, download `semantics-validate-output` for full details.
+4. The job should **fail**. Look for the `ERROR` line citing the admin name violation. In the **Artifacts** section, download `semantics-validate-output` for full details.
 
 !!! note
     If the **Artifacts** section is not visible, refresh the browser page.
@@ -370,17 +380,19 @@ Revert the admin name back to its original value `admin` and commit.
 
 ## Step 13 — Scheduled Integration Tests
 
-The **Scheduled Integration Test** workflow runs automatically every 6 hours via cron. It re-runs all Robot Framework tests against the live Dashboard to detect configuration drift — without deploying anything.
+The **Scheduled Integration Test** workflow uses an hourly cron heartbeat and a user-selected interval to run Robot Framework tests against the live Dashboard for drift detection — without deploying anything.
 
 ### Trigger Manually
 
 1. Go to **Actions > Scheduled Integration Test** and click **Run workflow**.
-2. Review the Job Summary and download the test results artifact.
-3. On your computer, unzip the downloaded artifact and open `report.html` from the `tests/results` folder in your browser to review each test item and its result statistics.
+2. Select **check_interval** (`once`, `1`, `6`, `12`, or `24` hours).
+3. Review the Job Summary and download the test results artifact.
+4. On your computer, unzip the downloaded artifact and open `report.html` from the `tests/results` folder in your browser to review each test item and its result statistics.
 
 !!! note
     If the **Artifacts** section is not visible, refresh the browser page.
 
+What you see here is a small sample of tests provided for illustration. You can confirm that tests were automatically created for all networks without human intervention. You can also review how long the test suite took to complete. When a customer has a full Services as Code subscription, they get access not only to the full schema, but also to the full test suite for every feature supported through Netascode.
 
 
 ### Look at the Schedule
@@ -390,9 +402,22 @@ Open `.github/workflows/scheduled-integration-test.yml` and find:
 ```yaml
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
-  workflow_dispatch:          # allow manual trigger
+        - cron: '0 * * * *'   # hourly heartbeat
+    workflow_dispatch:
+        inputs:
+            check_interval:
+                default: '6'
+                options:
+                    - 'once'
+                    - '1'
+                    - '6'
+                    - '12'
+                    - '24'
 ```
+
+The selected interval is saved in `.github/integration-test-schedule` during manual runs.
+
+Periodic execution does not begin until the first manual run sets this value.
 
 !!! info "Key Takeaway — Day-2 Operations"
     Scheduled tests answer a critical question: **"Has anyone manually changed the network since we last deployed?"**
@@ -405,7 +430,7 @@ on:
 
 ## Step 14 — Disable the Scheduled Workflow After Teardown
 
-Once the lab networks are destroyed, the **Scheduled Integration Test** workflow will continue to run every 6 hours and fail — because the Meraki networks it tests no longer exist. To avoid noisy failure notifications and unnecessary API calls, disable the schedule after teardown.
+Once the lab networks are destroyed, the **Scheduled Integration Test** workflow can continue to evaluate on the hourly heartbeat and may trigger test runs based on the saved interval. Because the Meraki networks no longer exist, these runs fail. To avoid noisy failure notifications and unnecessary API calls, disable the workflow after teardown.
 
 ### Disable the Workflow
 
