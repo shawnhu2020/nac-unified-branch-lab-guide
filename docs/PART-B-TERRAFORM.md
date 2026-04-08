@@ -102,7 +102,10 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     cp .env.example .env
     ```
 
-3. Open `.env` in your editor. Paste the value from Step 1 and replace the following lines. 
+3. Open `.env` in your editor. Paste the value from Step 1 and replace the following lines.
+
+    !!! warning "Note"
+        The format pasted from Network Notes may not exactly match the `.env.example` template. You may need to adjust variable names or remove extra blank lines to ensure each line follows the `KEY=VALUE` format. Compare carefully with the template and make sure each variable is on its own line with no extra whitespace or comments between the `=` and the value.
 
     ``` { .bash .no-copy }
     org_name=Org-XXXXXXXXXXXXXXXXXXX
@@ -116,11 +119,18 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     branch2_ms_serial=XXXX-XXXX-XXXX
     branch2_cw_serial=XXXX-XXXX-XXXX
     ```
-4. Still in `.env`, add the following line and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). Save `.env` file.
+4. Still in `.env`, add the following lines and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). You also need to add placeholder values for the RADIUS secrets required by the wireless templates. Save the `.env` file.
 
     ```bash
     MERAKI_API_KEY=[PASTE YOUR DASHBOARD API KEY HERE]
+
+    # RADIUS secrets required by the wireless template
+    radius_accounting_server1_secret=testing123
+    radius_server1_secret=testing123
     ```
+
+    !!! warning "Note"
+        The wireless template uses `!env` tags to reference `radius_accounting_server1_secret` and `radius_server1_secret`. If these environment variables are not set, `terraform apply` will fail with an error about missing environment variables. The placeholder values above are sufficient for this lab.
 
 5. Export all variables from `.env` into your current shell session:
 
@@ -228,9 +238,10 @@ Also explore the template files:
 
 The first Terraform run merges all YAML data files into a single rendered configuration. This is a **local-only** operation — no Meraki API calls are made.
 
-1. Navigate to the `workspaces/` directory:
+1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory) before navigating to `workspaces/`:
 
     ```bash
+    cd "$(git rev-parse --show-toplevel)"  # ensure you are at the repo root
     cd workspaces
     ```
 
@@ -272,7 +283,7 @@ Now run Terraform from the root of the project to deploy the branch networks.
 1. Return to the root directory:
 
     ```bash
-    cd ..
+    cd "$(git rev-parse --show-toplevel)"
     ```
 
 2. Initialize Terraform:
@@ -303,6 +314,13 @@ Now run Terraform from the root of the project to deploy the branch networks.
     - `meraki_wireless_*` — SSIDs and RF profiles
     - `meraki_network_group_policies`, `meraki_network_syslog_servers`, and more
 
+    !!! tip "Hint"
+        To save the plan output to a file for easier searching and review, run:
+        ```bash
+        terraform plan | tee plan-output.txt
+        ```
+        You can then search the file for specific resource names (e.g. `grep "meraki_network" plan-output.txt`).
+
     !!! info "Information"
         `terraform plan` is read-only — it calls the Meraki API to check current state but makes no changes. It is always safe to run.
 
@@ -332,16 +350,17 @@ Now run Terraform from the root of the project to deploy the branch networks.
 2. In the network selector, confirm **Unified Branch 1** and **Unified Branch 2** now appear.
 
 3. Select **Unified Branch 1** and verify:
-    - **Network-wide > General** — time zone and address match `pods_variables.nac.yaml`
+    - **Network-wide > General** — time zone matches `pods_variables.nac.yaml`
     - **Security & SD-WAN > Addressing & VLANs** — Data (10), Voice (20), IoT (30), Guest (50), and Infra (999) VLANs present
     - **Wireless > SSIDs** — Data and Guest SSIDs configured
+    - **Security & SD-WAN > Site-to-site VPN** — scroll down to confirm the network address/subnet is set correctly (e.g. matches the VLAN subnets from the data model)
     - **Security & SD-WAN > VPN Status** — the **Datacenter** remote peer should show green
     - **Security & SD-WAN > Appliance Status**, then navigate to **Tools > Ping**, configure the following and click **Ping**. You should see successful replies, confirming the VPN tunnel is up between the branch and Datacenter.
         - Source IP Address: `VLAN 10`
         - Destination IP Address: `10.255.20.1` (Gateway IP for Voice VLAN on the Datacenter side)
 
     !!! note
-        VPN connectivity between branch networks and Datacenter may take a couple of minutes to establish after `terraform apply` completes.
+        VPN connectivity between branch networks and Datacenter may take **up to 15 minutes** to establish after `terraform apply` completes, especially if the same device serials and network names were used in a previous deployment (existing VPN security associations on the Datacenter side may need to expire first). Be patient and refresh the VPN Status page periodically.
 
 4. Check **Organization > Inventory** to confirm MX85, MS250, and CW9172H for both branches are claimed and assigned to the correct networks.
 
@@ -349,10 +368,37 @@ Now run Terraform from the root of the project to deploy the branch networks.
         Navigate to **Organization > Change Log** to see the full API call log. You will see `POST api/v1/networks/{id}/devices/claim` alongside all the configuration calls — exactly what Terraform executed on your behalf.
 
     !!! tip "Hint"
-        Run `terraform plan` again after `terraform apply` completes. It should report `No changes` — confirming the deployed state matches the data model exactly. This is what the Idempotency Test checks in Part A's CI/CD pipeline.
+        Run `terraform plan` again after `terraform apply` completes. It should report `No changes` — confirming the deployed state matches the data model exactly.
 
 ---
+## Optional — Observe Terraform Drift Detection
 
+This exercise demonstrates how Terraform maintains state and detects out-of-band changes made directly in the Dashboard.
+
+1. In the Meraki Dashboard, select **Unified Branch 1** and navigate to **Wireless > SSIDs**.
+2. Find the **Data** SSID and **disable** it (toggle it off), then save.
+3. Back in your terminal, run:
+
+    ```bash
+    terraform plan
+    ```
+
+4. Terraform compares the live Dashboard state to your YAML data model and reports that the SSID needs to be **re-enabled**. Notice that only the changed resource is listed — Terraform does not reconfigure the entire network.
+
+5. Restore the intended state:
+
+    ```bash
+    terraform apply
+    ```
+
+    Type `yes` when prompted. Terraform re-enables the SSID to match the data model.
+
+6. Run `terraform plan` one more time to confirm `No changes` — the deployed state matches the YAML intent again.
+
+!!! info "Key Takeaway"
+    This is exactly how Terraform brings value on Day 2. Any manual change made in the Dashboard is detected as **drift**. Running `terraform plan` shows the delta, and `terraform apply` enforces the desired state from the YAML files. Only the resources that drifted are modified — everything else is left untouched.
+
+---
 ## Part B Complete!
 
 You have:
