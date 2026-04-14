@@ -28,15 +28,9 @@ By the end of Part A, you will be able to:
 The full CI/CD pipeline runs these stages in sequence:
 
 ```
-┌─────────┐   ┌──────────┐   ┌──────┐   ┌────────┐
-│ Prepare │ → │ Validate │ → │ Plan │ → │ Deploy │
-└─────────┘   └──────────┘   └──────┘   └────────┘
-                                              │
-                              ┌───────────────┴───────────────┐
-                              ▼                               ▼
-                    ┌──────────────────┐     ┌───────────────────────┐
-                    │ Integration Test │     │   Idempotency Test    │
-                    └──────────────────┘     └───────────────────────┘
+┌─────────┐   ┌──────────┐   ┌──────┐   ┌────────┐   ┌──────────────────┐
+│ Prepare │ → │ Validate │ → │ Plan │ → │ Deploy │ → │ Integration Test │
+└─────────┘   └──────────┘   └──────┘   └────────┘   └──────────────────┘
 ```
 
 | Stage | What it does |
@@ -46,7 +40,6 @@ The full CI/CD pipeline runs these stages in sequence:
 | **Plan** | Runs `terraform plan` and saves the plan — shows exactly what will be created/changed |
 | **Deploy** | Runs `terraform apply` using the saved plan — creates the branch networks and claims the hardware |
 | **Integration Test** | Runs Robot Framework tests against the live Meraki Dashboard to verify the deployed config matches the data model, using `nac-test` |
-| **Idempotency Test** | Runs `terraform plan` again after deploy — expects zero changes, confirming the pipeline is idempotent |
 
 [nac-validate](https://github.com/netascode/nac-validate/tree/main) and [nac-test](https://github.com/netascode/nac-test) are tools used within Cisco's Network as Code (NaC) framework to ensure network configuration integrity and operational correctness through automated validation and testing.
 ---
@@ -191,14 +184,14 @@ The **Plan** and **Deploy** jobs reference a GitHub Environment for scoped secre
 
 1. In your fork, go to **Settings > Environments**.
 
-2. Click **New environment** and name it. Then click **Configure environment**.
+2. Click **New environment**, enter the name **`unified-branch-network-as-code`** (copy it exactly as shown below), and click **Configure environment**.
 
     ```
     unified-branch-network-as-code
     ```
 
-    !!! warning "Note"
-        This name must match exactly. The pipeline workflow file (`pipeline.yml`) hardcodes `environment: unified-branch-network-as-code` in the Plan, Deploy, Integration Test, and Idempotency Test jobs. If the environment does not exist in your repo settings under this name, those jobs will fail waiting for an environment that GitHub cannot find.
+    !!! danger "Important"
+        The environment name must be **exactly** `unified-branch-network-as-code` — no extra spaces, no different casing. The pipeline workflow file (`pipeline.yml`) hardcodes `environment: unified-branch-network-as-code` in the Plan, Deploy, and Integration Test jobs. If the environment does not exist in your repo settings under this exact name, those jobs will fail waiting for an environment that GitHub cannot find.
 
 3. Leave Deployment branches and tags with **No restriction**.
 
@@ -213,6 +206,11 @@ The **Plan** and **Deploy** jobs reference a GitHub Environment for scoped secre
 You are now ready to trigger the full CI/CD pipeline.
 
 1. In your fork, click the **Actions** tab.
+
+    !!! warning "Enable Workflows in Your Fork"
+        GitHub **disables workflows by default** in forked repositories. When you first visit the **Actions** tab you will see a banner stating *"Workflows aren't being run on this forked repository"*. Click the **"I understand my workflows, go ahead and enable them"** button to activate them.
+
+        ![Enable workflows banner](assets/media/enable-workflows.png)
 
 2. In the left sidebar, click **Deploy Small Branch as Code**.
 
@@ -255,13 +253,11 @@ As the pipeline runs, expand each job to observe what is happening:
 - Look at the **Job Summary** for a pass/fail count table
 - Download `integration-test-results` and open the HTML report in your browser for the full test output
 
-**Idempotency Test:**
-
-- `terraform plan` runs again — it should show `0 to add, 0 to change, 0 to destroy`
-- This confirms that running the pipeline twice does not cause unintended changes
-
 !!! warning "Note"
     The full pipeline typically takes **5–10 minutes**. Do not close the tab — watch each job complete in sequence.
+
+!!! info "Node.js Deprecation Warnings"
+    You may see yellow warning annotations mentioning that **Node.js 20** actions are deprecated. These warnings come from GitHub-hosted runner updates and do **not** affect the pipeline results. They can be safely ignored.
 
 ---
 
@@ -274,15 +270,19 @@ As the pipeline runs, expand each job to observe what is happening:
     - **Unified Branch 2**
 
 3. Select **Unified Branch 1** and verify:
-    - **Network-wide > General** — time zone and address match the data model
+    - **Network-wide > General** — time zone matches the data model
     - **Security & SD-WAN > Addressing & VLANs** — Data, Voice, IoT, Guest, and Infra VLANs present
     - **Wireless > SSIDs** — Data and Guest SSIDs configured
-    - **Security & SD-WAN > VPN Status**  - Status of remote VPN peer Datacenter should be in green 
+    - **Security & SD-WAN > Site-to-site VPN** — scroll down to confirm the network address/subnet is set correctly (e.g. matches the VLAN subnets from the data model)
+    - **Security & SD-WAN > VPN Status**  — status of remote VPN peer Datacenter should be in green
     - **Security & SD-WAN > Appliance Status**, then navigate to **Tools > Ping**, configure the following and click `Ping`. You should see successful ping proving the VPN tunnel is up between branch and datacenter.
         - Source IP Address: `VLAN 10`
         - Destination IP Address: `10.255.20.1` (Gateway IP for Voice VLAN on Datacenter side)
     !!! note
         The VPN connectivity between branch networks and Datacenter might take a couple minutes.
+
+    !!! tip "Compare with the Data Model"
+        Open the file `data/pods_variables.nac.yaml` in your fork to see the intended configuration. Compare the VLAN subnets, time zone, device names, and SSID settings with what you see in the Dashboard. The template files in the `data/` directory (e.g. `templates-appliance.nac.yaml`, `templates-wireless.nac.yaml`) define the configuration details applied to each branch.
 
 4. Check **Organization > Inventory** to confirm MX85, MS250, and CW9172H for both branches are claimed and assigned to the correct networks.
 
@@ -318,6 +318,9 @@ The **Syntax Validation** workflow validates your YAML data files against `schem
     With this change, you are introducing a limit where the organization name can be at most 10 characters long.
 
 3. Go to **Actions > Run Syntax Validation** and run it again.
+
+    !!! warning "Don't use Re-run — start a new workflow run"
+        Clicking **Re-run all jobs** on a previous workflow run will re-execute the _same commit snapshot_ and may not pick up your latest changes. Always go back to **Actions > Run Syntax Validation** and click **Run workflow** to start a fresh run against the current `main` branch.
 
 4. The job should **fail** — your org name (e.g. `Org-3665367146726165048`) is longer than 10 characters. Look for `ERROR` annotations in the job log and download the `syntax-validate-output` artifact for details.
 
@@ -355,8 +358,8 @@ Navigate to `rules/101_admin_name.py` and examine it. This rule rejects any admi
 1. Open `data/org_global.nac.yaml` and change the administrator name to `root`:
 
     ```yaml
-    administrators:
-      - name: root    # <-- changed from your actual name
+    administrator:
+      name: root    # <-- changed from 'admin'
     ```
 
 2. Commit to `main` branch.
@@ -371,7 +374,7 @@ Navigate to `rules/101_admin_name.py` and examine it. This rule rejects any admi
 
 ### Restore
 
-Revert the admin name back to its original value `admin` and commit.
+Revert the administrator name back to its original value `admin` and commit.
 
 !!! info "Key Takeaway"
     Semantic validation is the second layer of protection. It catches violations that are syntactically valid YAML but violate your organization's policies. A file with `name: root` passes the schema but fails the business rule — these two layers work together.
@@ -419,6 +422,17 @@ The selected interval is saved in `.github/integration-test-schedule` during man
 
 Periodic execution does not begin until the first manual run sets this value.
 
+### Optional — Trigger a Test Failure
+
+To see how the integration test catches drift, try introducing a deliberate change in the Meraki Dashboard:
+
+1. In the Dashboard, select **Unified Branch 1** and navigate to **Switch > Switch settings**.
+2. Change the **Default host MTU size** from `9198` to `9100` and save.
+3. Go to **Actions > Scheduled Integration Test** and run the workflow (select `once`).
+4. The test should **fail** — the MTU value in the live Dashboard no longer matches the data model.
+5. Review the test results to see which test case detected the drift.
+6. **Restore**: change the MTU back to `9198` in the Dashboard (or re-run the deploy pipeline to enforce the desired state).
+
 !!! info "Key Takeaway — Day-2 Operations"
     Scheduled tests answer a critical question: **"Has anyone manually changed the network since we last deployed?"**
 
@@ -453,7 +467,7 @@ You have successfully:
 
 - Forked the NaC repository and configured it for your lab pod
 - Stored your Meraki API key securely in GitHub Secrets
-- Triggered and observed a full 6-stage CI/CD pipeline
+- Triggered and observed a full 5-stage CI/CD pipeline
 - Reviewed pipeline artifacts: merged NaC config, Terraform plan, and integration test HTML report
 - Deployed two fully-configured Unified Branch networks via automation — without installing anything locally
 - Verified the deployed networks in the Meraki Dashboard
