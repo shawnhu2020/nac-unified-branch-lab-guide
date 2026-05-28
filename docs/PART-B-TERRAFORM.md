@@ -96,13 +96,13 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     cd bac-lab
     ```
 
-2. Copy the environment variable template:
+2. The repo includes a `.env.example` template. Copy it and rename the copy to `.env`:
 
     ```bash
     cp .env.example .env
     ```
 
-3. Open `.env` in your editor. Paste the value from Step 1 and replace the following lines.
+3. Open `.env` in your editor. Update the values so they match your lab environment, using the value from Step 1 to replace the following lines.
 
     !!! warning "Note"
         The format pasted from Network Notes may not exactly match the `.env.example` template. You may need to adjust variable names or remove extra blank lines to ensure each line follows the `KEY=VALUE` format. Compare carefully with the template and make sure each variable is on its own line with no extra whitespace or comments between the `=` and the value.
