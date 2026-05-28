@@ -107,6 +107,9 @@ Part B requires the following tools installed on your laptop:
 | **Git** | Any recent version | [git-scm.com](https://git-scm.com) |
 | **Python** | 3.11 or later | [python.org](https://www.python.org/downloads/) |
 
+!!! info "Environment variables"
+    The lab repository includes a `.env.example` template. When the lab asks you to configure environment variables, start by copying that file and renaming the copy to `.env`, then update the values in `.env` to match your lab environment.
+
 <!-- !!! tip "Hint"
     On macOS: `brew install terraform git python` -->
 

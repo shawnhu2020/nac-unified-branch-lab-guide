@@ -151,11 +151,11 @@ The pipeline reads your API key from a GitHub Secret — an encrypted value that
 
 ## Step 7 — Configure Your Lab Pod Details in .env
 
-The `.env` file at the root of the repo stores non-secret variables that the pipeline loads at runtime: your org name, serial numbers, and hub network name. Unlike the API key, these are committed to the repo.
+The repo includes a `.env.example` template. Create a `.env` file from that template, then update the values to match your lab environment. The `.env` file at the root of the repo stores non-secret variables that the pipeline loads at runtime: your org name, serial numbers, and hub network name. Unlike the API key, these are committed to the repo.
 
-1. In your fork on GitHub, click on the `.env` file to open it, then click the **pencil icon** (Edit) to edit it in the browser.
+1. In your fork on GitHub, open `.env.example` and copy its contents.
 
-2. Fill in your values and replace those lines for the same variables at the top of the file:
+2. Create a new file named `.env` in the root of your fork, paste in the template contents, and then update the values for your lab pod:
 
     ``` { .bash .no-copy }
     #Copy and paste the following into .env of your git repository.
@@ -175,6 +175,9 @@ The `.env` file at the root of the repo stores non-secret variables that the pip
 
     !!! warning "Note"
         Notice that the API key is **not** in this file. The `.env` file only holds non-sensitive variables. The API key lives exclusively in GitHub Secrets.
+
+    !!! tip "Hint"
+        Keep `.env.example` unchanged as your reference template. Only update the values in `.env`.
 
 ---
 
