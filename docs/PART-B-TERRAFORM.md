@@ -144,7 +144,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     echo "API key set:      $([ -n "$MERAKI_API_KEY" ] && echo yes || echo NO)"
     echo "Branch 1 MX:      $branch1_mx_serial"
     echo "Branch 2 MX:      $branch2_mx_serial"
-    # Confirm variables are exported (visible to child processes)
+    
     env | grep org_name
     ```
 
@@ -237,7 +237,7 @@ The first Terraform run merges all YAML data files into a single rendered config
 1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory):
 
     ```bash
-    cd "$(git rev-parse --show-toplevel)"  # ensure you are at the repo root
+    cd "$(git rev-parse --show-toplevel)"
     ```
 
 2. Initialize Terraform:
