@@ -1,6 +1,6 @@
-# Part B — Network as Code with Terraform (Optional)
+# Part B — Branch as Code with Terraform (Optional)
 
-In Part B, you will run Terraform directly from your local machine to deploy the same two Unified Branch networks you automated in Part A. This hands-on experience lets you inspect and modify the NaC data model, run `terraform plan` and `terraform apply` interactively, and understand what the CI/CD pipeline does under the hood.
+In Part B, you will run Terraform directly from your local machine to deploy the same two Unified Branch networks you automated in Part A. This hands-on experience lets you inspect and modify the BaC data model, run `terraform plan` and `terraform apply` interactively, and understand what the CI/CD pipeline does under the hood.
 
 !!! warning "Pre-requisite — Environment Must Be Clean"
     Part A deployed **Unified Branch 1** and **Unified Branch 2** via the CI/CD pipeline. Terraform stores state in the pipeline — your local machine does not have that state file.
@@ -13,8 +13,8 @@ In Part B, you will run Terraform directly from your local machine to deploy the
 
 By the end of Part B, you will be able to:
 
-- Use git to clone the Network as Code lab repository and configure a local `.env` file
-- Understand the NaC YAML data model — pods variables, templates, and the `!env` tag
+- Use git to clone the Branch as Code lab repository and configure a local `.env` file
+- Understand the BaC YAML data model — pods variables, templates, and the `!env` tag
 - Use Terraform to merge YAML files into a rendered configuration
 - Run `terraform plan` to preview changes before applying
 - Use `terraform apply` to deploy branch networks and claim physical hardware
@@ -92,7 +92,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
 1. Open a terminal and clone the repository:
 
     ```bash
-    git clone [Unified Branch - Network as Code public repo]
+    git clone [Unified Branch - Branch as Code public repo]
     cd bac-lab
     ```
 
@@ -119,18 +119,14 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     branch2_ms_serial=XXXX-XXXX-XXXX
     branch2_cw_serial=XXXX-XXXX-XXXX
     ```
-4. Still in `.env`, add the following lines and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). You also need to add placeholder values for the RADIUS secrets required by the wireless templates. Save the `.env` file.
+4. Still in `.env`, add the following line and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). Save the `.env` file.
 
     ```bash
     MERAKI_API_KEY=[PASTE YOUR DASHBOARD API KEY HERE]
-
-    # RADIUS secrets required by the wireless template
-    radius_accounting_server1_secret=testing123
-    radius_server1_secret=testing123
     ```
 
-    !!! warning "Note"
-        The wireless template uses `!env` tags to reference `radius_accounting_server1_secret` and `radius_server1_secret`. If these environment variables are not set, `terraform apply` will fail with an error about missing environment variables. The placeholder values above are sufficient for this lab.
+    !!! tip "Hint"
+        The latest `.env.example` already includes non-secret example credentials and RADIUS/SNMP variables used by templates. Keep those defaults unless your proctor instructs otherwise.
 
 5. Export all variables from `.env` into your current shell session:
 
@@ -148,7 +144,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     echo "API key set:      $([ -n "$MERAKI_API_KEY" ] && echo yes || echo NO)"
     echo "Branch 1 MX:      $branch1_mx_serial"
     echo "Branch 2 MX:      $branch2_mx_serial"
-    # Confirm variables are exported (visible to child processes)
+
     env | grep org_name
     ```
 
@@ -230,7 +226,7 @@ Also explore the template files:
 | `templates-wan-uplinks.nac.yaml` | WAN uplink configurations |
 
 !!! info "Information"
-    Learn more about the NaC framework at [github.com/netascode/terraform-meraki-nac-meraki](https://github.com/netascode/terraform-meraki-nac-meraki){:target="_blank"}.
+    Learn more about the BaC framework at [github.com/netascode/terraform-meraki-nac-meraki](https://github.com/netascode/terraform-meraki-nac-meraki){:target="_blank"}.
 
 ---
 
@@ -238,49 +234,7 @@ Also explore the template files:
 
 The first Terraform run merges all YAML data files into a single rendered configuration. This is a **local-only** operation — no Meraki API calls are made.
 
-1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory) before navigating to `workspaces/`:
-
-    ```bash
-    cd "$(git rev-parse --show-toplevel)"  # ensure you are at the repo root
-    cd workspaces
-    ```
-
-2. Initialize Terraform:
-
-    ```bash
-    terraform init
-    ```
-
-    Expected output (truncated):
-
-    ``` { .bash .no-copy }
-    Initializing modules...
-    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git//modules/model?ref=v0.5.0 for model...
-    Terraform has been successfully initialized!
-    ```
-
-3. Apply to render:
-
-    ```bash
-    terraform apply
-    ```
-
-    Type `yes` when prompted. Expected output:
-
-    ``` { .bash .no-copy }
-    Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
-    ```
-
-    !!! tip "Hint"
-        Open `workspaces/merged_configuration.nac.yaml` in your editor. This is the fully-rendered configuration — all `!env` tags have been resolved and all template variables substituted. Compare it to the individual source files to see how the merge works.
-
----
-
-## Step 5 — Plan and Deploy to Meraki
-
-Now run Terraform from the root of the project to deploy the branch networks.
-
-1. Return to the root directory:
+1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory):
 
     ```bash
     cd "$(git rev-parse --show-toplevel)"
@@ -295,11 +249,46 @@ Now run Terraform from the root of the project to deploy the branch networks.
     Expected output (truncated):
 
     ``` { .bash .no-copy }
-    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git?ref=v0.5.0 for meraki...
+    Initializing modules...
+    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git//modules/model?ref=v0.9.0 for model...
     Terraform has been successfully initialized!
     ```
 
-3. Preview the changes:
+3. Apply with a target to render only the merged model file:
+
+    ```bash
+    terraform apply -auto-approve -target='module.meraki.module.model.local_sensitive_file.model[0]'
+    ```
+
+    Expected output:
+
+    ``` { .bash .no-copy }
+    Apply complete!
+    ```
+
+    !!! tip "Hint"
+        Open `merged_configuration.nac.yaml` in your editor (repo root). This is the fully-rendered configuration — all `!env` tags have been resolved and all template variables substituted. Compare it to the individual source files to see how the merge works.
+
+---
+
+## Step 5 — Plan and Deploy to Meraki
+
+Now run Terraform from the root of the project to deploy the branch networks.
+
+1. Initialize Terraform:
+
+    ```bash
+    terraform init
+    ```
+
+    Expected output (truncated):
+
+    ``` { .bash .no-copy }
+    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git?ref=v0.9.0 for meraki...
+    Terraform has been successfully initialized!
+    ```
+
+2. Preview the changes:
 
     ```bash
     terraform plan
@@ -324,7 +313,7 @@ Now run Terraform from the root of the project to deploy the branch networks.
     !!! info "Information"
         `terraform plan` is read-only — it calls the Meraki API to check current state but makes no changes. It is always safe to run.
 
-4. Apply the configuration:
+3. Apply the configuration:
 
     ```bash
     terraform apply
@@ -405,7 +394,7 @@ You have:
 
 - Run the cleanup workflow to reset the environment before the local Terraform run
 - Configured a local `.env` file with your API key and branch serial numbers
-- Explored the NaC YAML data model — pods variables, templates, the `!env` tag, and device claiming
+- Explored the BaC YAML data model — pods variables, templates, the `!env` tag, and device claiming
 - Used Terraform locally to render, plan, and deploy two fully-configured Unified Branch networks
 - Established the Auto-VPN between branches and datacenter networks and verified the connectivity by running ping test
 - Verified the deployed configuration in the Meraki Dashboard
