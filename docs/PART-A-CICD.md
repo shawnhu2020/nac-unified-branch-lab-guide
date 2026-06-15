@@ -16,7 +16,7 @@ By the end of Part A, you will be able to:
 - Fork a Network as Code repository and configure it for your lab pod
 - Store API key securely in GitHub and understand how it flow into CI/CD pipelines
 - Understand the NaC YAML data model — pods variables, templates, and the `!env` tag
-- Trigger and observe a multi-stage GitHub Actions pipeline (Prepare → Validate → Plan → Deploy → Test)
+- Trigger and observe a multi-stage GitHub Actions pipeline (Validate → Plan → Deploy → Idempotency Test / Integration Test)
 - Read pipeline artifacts including the merged NaC configuration and Terraform plan
 - Run syntax and semantic validation workflows and understand pass/fail behavior
 - Understand how scheduled integration tests enable continuous Day-2 drift detection
@@ -28,17 +28,21 @@ By the end of Part A, you will be able to:
 The full CI/CD pipeline runs these stages in sequence:
 
 ```
-┌─────────┐   ┌──────────┐   ┌──────┐   ┌────────┐   ┌──────────────────┐
-│ Prepare │ → │ Validate │ → │ Plan │ → │ Deploy │ → │ Integration Test │
-└─────────┘   └──────────┘   └──────┘   └────────┘   └──────────────────┘
+┌──────────┐   ┌──────┐   ┌────────┐
+│ Validate │ → │ Plan │ → │ Deploy │
+└──────────┘   └──────┘   └────────┘
+                         ↙          ↘
+          ┌──────────────────┐   ┌──────────────────┐
+          │ Idempotency Test │   │ Integration Test │
+          └──────────────────┘   └──────────────────┘
 ```
 
 | Stage | What it does |
 |-------|-------------|
-| **Prepare** | Merges all YAML data model files into a single `merged_configuration.nac.yaml` and uploads it as an artifact |
-| **Validate** | Checks Terraform formatting and runs `nac-validate` to validate the merged config against the NaC schema |
+| **Validate** | Checks Terraform formatting, generates `merged_configuration.nac.yaml`, and runs `nac-validate` against the NaC schema |
 | **Plan** | Runs `terraform plan` and saves the plan — shows exactly what will be created/changed |
 | **Deploy** | Runs `terraform apply` using the saved plan — creates the branch networks and claims the hardware |
+| **Idempotency Test** | Runs a post-deploy `terraform plan -detailed-exitcode` and fails if drift or unintended changes are detected |
 | **Integration Test** | Runs Robot Framework tests against the live Meraki Dashboard to verify the deployed config matches the data model, using `nac-test` |
 
 [nac-validate](https://github.com/netascode/nac-validate/tree/main) and [nac-test](https://github.com/netascode/nac-test) are tools used within Cisco's Network as Code (NaC) framework to ensure network configuration integrity and operational correctness through automated validation and testing.
@@ -226,21 +230,18 @@ You are now ready to trigger the full CI/CD pipeline.
 
 As the pipeline runs, expand each job to observe what is happening:
 
-**Prepare:**
-
-- Terraform downloads the NaC model module and merges all YAML data files into `merged_configuration.nac.yaml`
-- When complete, click **Artifacts** and download `merged-config` — open the file to see the fully rendered configuration with all template variables substituted
-
 **Validate:**
 
 - `terraform fmt -check` verifies all Terraform files are correctly formatted
+- Terraform generates `merged_configuration.nac.yaml`
 - `nac-validate` validates the merged configuration against the NaC schema
 - Look for `✅ nac-validate passed` in the output
+- Download artifact `validate-outputs` to review `merged_configuration.nac.yaml`
 
 **Plan:**
 
 - `terraform plan` shows exactly what will be created: two networks (`Unified Branch 1` and `Unified Branch 2`), device claim resources, VLANs, firewall rules, SSIDs, switch profiles, and more
-- Download the `plan-output` artifact to review the full plan
+- Download the `plan-outputs` artifact to review `plan.txt` / `plan.json`
 
 **Deploy:**
 
@@ -249,6 +250,12 @@ As the pipeline runs, expand each job to observe what is happening:
 
     !!! warning "Note"
         On your **first run** you will see a yellow warning step inside the Deploy job: `Unable to download artifact(s): Artifact not found for name: terraform-state-pre-deploy`. This is expected — no prior Terraform state exists yet, so there is nothing to restore. The step is configured with `continue-on-error: true` and the Deploy job will still show a green ✅. This warning disappears on all subsequent runs once a state file exists.
+
+    **Idempotency Test:**
+
+    - Runs immediately after Deploy and executes `terraform plan -detailed-exitcode`
+    - Passes only when no changes are detected (exit code `0`)
+    - Fails if Terraform reports pending changes (exit code `2`), signaling non-idempotent behavior
 
 **Integration Test:**
 
@@ -470,7 +477,7 @@ You have successfully:
 
 - Forked the NaC repository and configured it for your lab pod
 - Stored your Meraki API key securely in GitHub Secrets
-- Triggered and observed a full 5-stage CI/CD pipeline
+- Triggered and observed a full CI/CD pipeline with validate, plan, deploy, idempotency, and integration stages
 - Reviewed pipeline artifacts: merged NaC config, Terraform plan, and integration test HTML report
 - Deployed two fully-configured Unified Branch networks via automation — without installing anything locally
 - Verified the deployed networks in the Meraki Dashboard

@@ -119,18 +119,14 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     branch2_ms_serial=XXXX-XXXX-XXXX
     branch2_cw_serial=XXXX-XXXX-XXXX
     ```
-4. Still in `.env`, add the following lines and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). You also need to add placeholder values for the RADIUS secrets required by the wireless templates. Save the `.env` file.
+4. Still in `.env`, add the following line and paste in your Meraki API key. Use the [same key you generated in Part A — Step 5](PART-A-CICD.md#step-5-generate-your-meraki-api-key). Save the `.env` file.
 
     ```bash
     MERAKI_API_KEY=[PASTE YOUR DASHBOARD API KEY HERE]
-
-    # RADIUS secrets required by the wireless template
-    radius_accounting_server1_secret=testing123
-    radius_server1_secret=testing123
     ```
 
-    !!! warning "Note"
-        The wireless template uses `!env` tags to reference `radius_accounting_server1_secret` and `radius_server1_secret`. If these environment variables are not set, `terraform apply` will fail with an error about missing environment variables. The placeholder values above are sufficient for this lab.
+    !!! tip "Hint"
+        The latest `.env.example` already includes non-secret example credentials and RADIUS/SNMP variables used by templates. Keep those defaults unless your proctor instructs otherwise.
 
 5. Export all variables from `.env` into your current shell session:
 
@@ -238,11 +234,10 @@ Also explore the template files:
 
 The first Terraform run merges all YAML data files into a single rendered configuration. This is a **local-only** operation — no Meraki API calls are made.
 
-1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory) before navigating to `workspaces/`:
+1. Make sure you are in the **repository root directory** (not in `data/` or any subdirectory):
 
     ```bash
     cd "$(git rev-parse --show-toplevel)"  # ensure you are at the repo root
-    cd workspaces
     ```
 
 2. Initialize Terraform:
@@ -255,24 +250,24 @@ The first Terraform run merges all YAML data files into a single rendered config
 
     ``` { .bash .no-copy }
     Initializing modules...
-    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git//modules/model?ref=v0.5.0 for model...
+    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git//modules/model?ref=v0.9.0 for model...
     Terraform has been successfully initialized!
     ```
 
-3. Apply to render:
+3. Apply with a target to render only the merged model file:
 
     ```bash
-    terraform apply
+    terraform apply -auto-approve -target='module.meraki.module.model.local_sensitive_file.model[0]'
     ```
 
-    Type `yes` when prompted. Expected output:
+    Expected output:
 
     ``` { .bash .no-copy }
-    Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+    Apply complete!
     ```
 
     !!! tip "Hint"
-        Open `workspaces/merged_configuration.nac.yaml` in your editor. This is the fully-rendered configuration — all `!env` tags have been resolved and all template variables substituted. Compare it to the individual source files to see how the merge works.
+        Open `merged_configuration.nac.yaml` in your editor (repo root). This is the fully-rendered configuration — all `!env` tags have been resolved and all template variables substituted. Compare it to the individual source files to see how the merge works.
 
 ---
 
@@ -280,13 +275,7 @@ The first Terraform run merges all YAML data files into a single rendered config
 
 Now run Terraform from the root of the project to deploy the branch networks.
 
-1. Return to the root directory:
-
-    ```bash
-    cd "$(git rev-parse --show-toplevel)"
-    ```
-
-2. Initialize Terraform:
+1. Initialize Terraform:
 
     ```bash
     terraform init
@@ -295,11 +284,11 @@ Now run Terraform from the root of the project to deploy the branch networks.
     Expected output (truncated):
 
     ``` { .bash .no-copy }
-    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git?ref=v0.5.0 for meraki...
+    Downloading git::https://github.com/netascode/terraform-meraki-nac-meraki.git?ref=v0.9.0 for meraki...
     Terraform has been successfully initialized!
     ```
 
-3. Preview the changes:
+2. Preview the changes:
 
     ```bash
     terraform plan
@@ -324,7 +313,7 @@ Now run Terraform from the root of the project to deploy the branch networks.
     !!! info "Information"
         `terraform plan` is read-only — it calls the Meraki API to check current state but makes no changes. It is always safe to run.
 
-4. Apply the configuration:
+3. Apply the configuration:
 
     ```bash
     terraform apply
