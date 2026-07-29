@@ -1,4 +1,4 @@
-# Part A — Network as Code with GitHub Actions CI/CD
+# Part A — Branch as Code with GitHub Actions CI/CD
 
 In this lab, you will use [GitHub Actions](https://docs.github.com/en/actions) to deploy and validate two Unified Branch networks — entirely from the cloud, with no software installed on your local machine. You will trigger a full CI/CD pipeline, explore each automated stage, and deliberately introduce configuration errors to see the pipeline catch them.
 
@@ -13,9 +13,9 @@ In this lab, you will use [GitHub Actions](https://docs.github.com/en/actions) t
 
 By the end of Part A, you will be able to:
 
-- Fork a Network as Code repository and configure it for your lab pod
+- Fork a Branch as Code repository and configure it for your lab pod
 - Store API key securely in GitHub and understand how it flow into CI/CD pipelines
-- Understand the NaC YAML data model — pods variables, templates, and the `!env` tag
+- Understand the BaC YAML data model — pods variables, templates, and the `!env` tag
 - Trigger and observe a multi-stage GitHub Actions pipeline (Validate → Plan → Deploy → Idempotency Test / Integration Test)
 - Read pipeline artifacts including the merged NaC configuration and Terraform plan
 - Run syntax and semantic validation workflows and understand pass/fail behavior
@@ -45,7 +45,8 @@ The full CI/CD pipeline runs these stages in sequence:
 | **Idempotency Test** | Runs a post-deploy `terraform plan -detailed-exitcode` and fails if drift or unintended changes are detected |
 | **Integration Test** | Runs Robot Framework tests against the live Meraki Dashboard to verify the deployed config matches the data model, using `nac-test` |
 
-[nac-validate](https://github.com/netascode/nac-validate/tree/main) and [nac-test](https://github.com/netascode/nac-test) are tools used within Cisco's Network as Code (NaC) framework to ensure network configuration integrity and operational correctness through automated validation and testing.
+[nac-validate](https://github.com/netascode/nac-validate/tree/main) and [nac-test](https://github.com/netascode/nac-test) are tools used within Cisco's Branch as Code (BaC) framework to ensure network configuration integrity and operational correctness through automated validation and testing.
+
 ---
 
 ## Step 1 — Log In and Identify Your Lab Organization
@@ -100,7 +101,7 @@ Forking creates your own copy of the lab repo under your GitHub account. This is
 1. Go to the lab repository:
 
     ```
-    https://FINAL-REPO-TO-BE-UPDATED
+    https://github.com/snmitrov/bac-lab.git
     ```
 
 2. Click **Fork** (top-right corner of the page).
@@ -186,6 +187,7 @@ The repo includes a `.env.example` template. Create a `.env` file from that temp
     !!! tip "Hint"
         Keep `.env.example` unchanged as your reference template. Only update the values in `.env`.
 
+
 ---
 
 ## Step 8 — Create a GitHub Environment
@@ -237,9 +239,9 @@ As the pipeline runs, expand each job to observe what is happening:
 
 - `terraform fmt -check` verifies all Terraform files are correctly formatted
 - Terraform generates `merged_configuration.nac.yaml`
-- `nac-validate` validates the merged configuration against the NaC schema
+- `nac-validate` validates the merged configuration against the BaC schema
 - Look for `✅ nac-validate passed` in the output
-- Download artifact `validate-outputs` to review `merged_configuration.nac.yaml`
+- Download the `plan-outputs` artifact to review `plan.txt` / `plan.json`
 
 **Plan:**
 
@@ -254,11 +256,13 @@ As the pipeline runs, expand each job to observe what is happening:
     !!! warning "Note"
         On your **first run** you will see a yellow warning step inside the Deploy job: `Unable to download artifact(s): Artifact not found for name: terraform-state-pre-deploy`. This is expected — no prior Terraform state exists yet, so there is nothing to restore. The step is configured with `continue-on-error: true` and the Deploy job will still show a green ✅. This warning disappears on all subsequent runs once a state file exists.
 
-    **Idempotency Test:**
 
-    - Runs immediately after Deploy and executes `terraform plan -detailed-exitcode`
-    - Passes only when no changes are detected (exit code `0`)
-    - Fails if Terraform reports pending changes (exit code `2`), signaling non-idempotent behavior
+**Idempotency Test:**
+
+- Runs immediately after Deploy and executes `terraform plan -detailed-exitcode`
+- Passes only when no changes are detected (exit code `0`)
+- Fails if Terraform reports pending changes (exit code `2`), signaling non-idempotent behavior
+
 
 **Integration Test:**
 
@@ -306,7 +310,7 @@ As the pipeline runs, expand each job to observe what is happening:
 
 ## Step 11 — Explore Syntax Validation
 
-Network as Code provides two levels of validation to ensure your configuration is both well-formed and logically correct: syntax and semantic validation.
+Branch as Code provides two levels of validation to ensure your configuration is both well-formed and logically correct: syntax and semantic validation.
 
 Syntax validation checks that your YAML configuration follows proper formatting rules—correct indentation, valid YAML structure, and proper data types. This catches basic errors like missing colons, incorrect spacing, or malformed lists.
 
@@ -355,7 +359,7 @@ Change `max=10` back to `max=128` and commit.
 
 The **Semantic Validation** workflow uses custom Python rules in the `rules/` folder to enforce business policies that go beyond what a schema can express.
 
-Semantic validation goes deeper than syntax by verifying that your configuration makes logical sense according to the Network as Code data model. Using the `nac-validate` tool with Yamale schemas, it ensures that field values are appropriate, required parameters are present, and relationships between configuration elements are valid. For example, it verifies that port numbers are in valid ranges, IP addresses follow correct formats, and referenced objects actually exist.
+Semantic validation goes deeper than syntax by verifying that your configuration makes logical sense according to the Branch as Code data model. Using the `nac-validate` tool with Yamale schemas, it ensures that field values are appropriate, required parameters are present, and relationships between configuration elements are valid. For example, it verifies that port numbers are in valid ranges, IP addresses follow correct formats, and referenced objects actually exist.
 
 Together, syntax and semantic validation help catch errors early in the development process, before configurations are deployed to production networks.
 
@@ -482,10 +486,10 @@ Once the lab networks are destroyed, the **Scheduled Integration Test** workflow
 
 You have successfully:
 
-- Forked the NaC repository and configured it for your lab pod
+- Forked the BaC repository and configured it for your lab pod
 - Stored your Meraki API key securely in GitHub Secrets
 - Triggered and observed a full CI/CD pipeline with validate, plan, deploy, idempotency, and integration stages
-- Reviewed pipeline artifacts: merged NaC config, Terraform plan, and integration test HTML report
+- Reviewed pipeline artifacts: merged BaC config, Terraform plan, and integration test HTML report
 - Deployed two fully-configured Unified Branch networks via automation — without installing anything locally
 - Verified the deployed networks in the Meraki Dashboard
 - Introduced and observed a **syntax violation** (schema max length) caught by the Validate stage
@@ -496,7 +500,7 @@ You have successfully:
 ---
 
 !!! tip "Continue to Part B (Optional)"
-    If you want hands-on experience running Terraform from your own laptop — including understanding the data model in depth and running `terraform plan` and `terraform apply` directly — continue to **[Part B — Network as Code with Terraform](PART-B-TERRAFORM.md)**.
+    If you want hands-on experience running Terraform from your own laptop — including understanding the data model in depth and running `terraform plan` and `terraform apply` directly — continue to **[Part B — Branch as Code with Terraform](PART-B-TERRAFORM.md)**.
 
     **Before starting Part B**, you must remove the two branch networks created in this lab so that Part B can deploy them from a clean state using local Terraform. Run the **Cleanup – Delete Branch Networks** workflow to do this:
 
@@ -506,4 +510,4 @@ You have successfully:
     4. The **Destroy Branch Networks** job starts automatically after the plan — wait for it to complete (green ✅).
     5. Verify in the Meraki Dashboard that both branch networks are gone.
 
-    You are now ready to start **[Part B — Network as Code with Terraform](PART-B-TERRAFORM.md)**.
+    You are now ready to start **[Part B — Branch as Code with Terraform](PART-B-TERRAFORM.md)**.

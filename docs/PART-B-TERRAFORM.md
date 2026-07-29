@@ -1,6 +1,6 @@
-# Part B — Network as Code with Terraform (Optional)
+# Part B — Branch as Code with Terraform (Optional)
 
-In Part B, you will run Terraform directly from your local machine to deploy the same two Unified Branch networks you automated in Part A. This hands-on experience lets you inspect and modify the NaC data model, run `terraform plan` and `terraform apply` interactively, and understand what the CI/CD pipeline does under the hood.
+In Part B, you will run Terraform directly from your local machine to deploy the same two Unified Branch networks you automated in Part A. This hands-on experience lets you inspect and modify the BaC data model, run `terraform plan` and `terraform apply` interactively, and understand what the CI/CD pipeline does under the hood.
 
 !!! warning "Pre-requisite — Environment Must Be Clean"
     Part A deployed **Unified Branch 1** and **Unified Branch 2** via the CI/CD pipeline. Terraform stores state in the pipeline — your local machine does not have that state file.
@@ -13,8 +13,8 @@ In Part B, you will run Terraform directly from your local machine to deploy the
 
 By the end of Part B, you will be able to:
 
-- Use git to clone the Network as Code lab repository and configure a local `.env` file
-- Understand the NaC YAML data model — pods variables, templates, and the `!env` tag
+- Use git to clone the Branch as Code lab repository and configure a local `.env` file
+- Understand the BaC YAML data model — pods variables, templates, and the `!env` tag
 - Use Terraform to merge YAML files into a rendered configuration
 - Run `terraform plan` to preview changes before applying
 - Use `terraform apply` to deploy branch networks and claim physical hardware
@@ -223,7 +223,7 @@ Also explore the template files:
 | `templates-wan-uplinks.nac.yaml` | WAN uplink configurations |
 
 !!! info "Information"
-    Learn more about the NaC framework at [github.com/netascode/terraform-meraki-nac-meraki](https://github.com/netascode/terraform-meraki-nac-meraki){:target="_blank"}.
+    Learn more about the BaC framework at [github.com/netascode/terraform-meraki-nac-meraki](https://github.com/netascode/terraform-meraki-nac-meraki){:target="_blank"}.
 
 ---
 
@@ -393,7 +393,7 @@ You have:
 
 - Run the cleanup workflow to reset the environment before the local Terraform run
 - Configured a local `.env` file with your API key and branch serial numbers
-- Explored the NaC YAML data model — pods variables, templates, the `!env` tag, and device claiming
+- Explored the BaC YAML data model — pods variables, templates, the `!env` tag, and device claiming
 - Used Terraform locally to render, plan, and deploy two fully-configured Unified Branch networks
 - Established the Auto-VPN between branches and datacenter networks and verified the connectivity by running ping test
 - Verified the deployed configuration in the Meraki Dashboard
