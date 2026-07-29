@@ -1,4 +1,4 @@
-site_name: Unified Branch - Network as Code
+site_name: Unified Branch - Branch as Code
 site_description: Meraki Launchpad Lab Guide
 site_author: Cisco Meraki
 
@@ -7,8 +7,8 @@ use_directory_urls: false
 
 nav:
   - Overview: LAB-GUIDE.md
-  - Part A – Network as Code with GitHub Actions CI/CD: PART-A-CICD.md
-  - Part B – Network as Code with Terraform (Optional): PART-B-TERRAFORM.md
+  - Part A – CI/CD Workflows with GitHub Actions: PART-A-CICD.md
+  - Part B – Branch as Code with Terraform (Optional): PART-B-TERRAFORM.md
 
 theme:
   name: material
