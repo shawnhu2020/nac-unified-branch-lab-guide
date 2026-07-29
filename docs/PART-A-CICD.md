@@ -17,7 +17,7 @@ By the end of Part A, you will be able to:
 - Store API key securely in GitHub and understand how it flow into CI/CD pipelines
 - Understand the BaC YAML data model — pods variables, templates, and the `!env` tag
 - Trigger and observe a multi-stage GitHub Actions pipeline (Validate → Plan → Deploy → Idempotency Test / Integration Test)
-- Read pipeline artifacts including the merged BaC configuration and Terraform plan
+- Read pipeline artifacts including the merged NaC configuration and Terraform plan
 - Run syntax and semantic validation workflows and understand pass/fail behavior
 - Understand how scheduled integration tests enable continuous Day-2 drift detection
 
@@ -160,7 +160,10 @@ The repo includes a `.env.example` template. Create a `.env` file from that temp
 
 1. In your fork on GitHub, open `.env.example` and copy its contents.
 
-2. Create a new file named `.env` in the root of your fork, paste in the template contents, and then update the values for your lab pod:
+2. Create a new file named `.env` in the root of your fork by copying `.env.example`:
+    - In `.env.example`, click **Raw** and copy all content.
+    - Return to the repo root and click **Add file > Create new file**.
+    - Name the file exactly `.env`, paste the copied content, and then update the values for your lab pod:
 
     ``` { .bash .no-copy }
     #Copy and paste the following into .env of your git repository.
@@ -219,7 +222,7 @@ You are now ready to trigger the full CI/CD pipeline.
     !!! warning "Enable Workflows in Your Fork"
         GitHub **disables workflows by default** in forked repositories. When you first visit the **Actions** tab you will see a banner stating *"Workflows aren't being run on this forked repository"*. Click the **"I understand my workflows, go ahead and enable them"** button to activate them.
 
-        ![Enable workflows banner](assets/media/enable-workflows.png)
+        ![Enable workflows banner](assets/media/pic-A-step-9-point-1.png)
 
 2. In the left sidebar, click **Deploy Small Branch as Code**.
 
@@ -243,7 +246,7 @@ As the pipeline runs, expand each job to observe what is happening:
 **Plan:**
 
 - `terraform plan` shows exactly what will be created: two networks (`Unified Branch 1` and `Unified Branch 2`), device claim resources, VLANs, firewall rules, SSIDs, switch profiles, and more
-- Download the `plan-output` artifact to review the full plan
+- Download the `plan-outputs` artifact to review `plan.txt` / `plan.json`
 
 **Deploy:**
 
@@ -321,6 +324,8 @@ The **Syntax Validation** workflow validates your YAML data files against `schem
 ### Introduce a Violation
 
 1. In your fork, edit file `schema.yaml` and find:
+
+    If you need a quick refresher on editing in GitHub: open the file, click the **pencil icon (Edit this file)**, make your change, then scroll down and use **Commit changes**.
 
     ```yaml
     organizations:
@@ -401,10 +406,12 @@ The **Scheduled Integration Test** workflow uses an hourly cron heartbeat and a 
 
 ### Trigger Manually
 
-1. Go to **Actions > Scheduled Integration Test** and click **Run workflow**.
-2. Select **check_interval** (`once`, `1`, `6`, `12`, or `24` hours).
-3. Review the Job Summary and download the test results artifact.
-4. On your computer, unzip the downloaded artifact and open `report.html` from the `tests/results` folder in your browser to review each test item and its result statistics.
+1. Go to **Actions > Scheduled Integration Test**.
+2. If you see a disabled-workflow banner, click **Enable workflow** first. Scheduled workflows are disabled by default until explicitly enabled.
+3. Click **Run workflow**.
+4. Select **check_interval** (`once`, `1`, `6`, `12`, or `24` hours).
+5. Review the Job Summary and download the test results artifact.
+6. On your computer, unzip the downloaded artifact and open `report.html` from the `tests/results` folder in your browser to review each test item and its result statistics.
 
 !!! note
     If the **Artifacts** section is not visible, refresh the browser page.
@@ -441,11 +448,11 @@ Periodic execution does not begin until the first manual run sets this value.
 To see how the integration test catches drift, try introducing a deliberate change in the Meraki Dashboard:
 
 1. In the Dashboard, select **Unified Branch 1** and navigate to **Switch > Switch settings**.
-2. Change the **Default host MTU size** from `9198` to `9100` and save.
+2. Change the **Default host MTU size** from `9176` to `9100` and save.
 3. Go to **Actions > Scheduled Integration Test** and run the workflow (select `once`).
 4. The test should **fail** — the MTU value in the live Dashboard no longer matches the data model.
 5. Review the test results to see which test case detected the drift.
-6. **Restore**: change the MTU back to `9198` in the Dashboard (or re-run the deploy pipeline to enforce the desired state).
+6. **Restore**: change the MTU back to `9176` in the Dashboard (or re-run the deploy pipeline to enforce the desired state).
 
 !!! info "Key Takeaway — Day-2 Operations"
     Scheduled tests answer a critical question: **"Has anyone manually changed the network since we last deployed?"**
