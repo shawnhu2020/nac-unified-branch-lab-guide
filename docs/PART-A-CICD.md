@@ -243,7 +243,7 @@ As the pipeline runs, expand each job to observe what is happening:
 **Plan:**
 
 - `terraform plan` shows exactly what will be created: two networks (`Unified Branch 1` and `Unified Branch 2`), device claim resources, VLANs, firewall rules, SSIDs, switch profiles, and more
-- Download the `plan-output` artifact to review the full plan
+- Download the `plan-outputs` artifact to review `plan.txt` / `plan.json`
 
 **Deploy:**
 

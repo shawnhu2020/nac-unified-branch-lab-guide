@@ -144,7 +144,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     echo "API key set:      $([ -n "$MERAKI_API_KEY" ] && echo yes || echo NO)"
     echo "Branch 1 MX:      $branch1_mx_serial"
     echo "Branch 2 MX:      $branch2_mx_serial"
-
+    
     env | grep org_name
     ```
 
