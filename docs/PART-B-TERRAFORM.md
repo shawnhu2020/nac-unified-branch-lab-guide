@@ -92,7 +92,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
 1. Open a terminal and clone the repository:
 
     ```bash
-    git clone [Unified Branch - Branch as Code public repo]
+    git clone https://github.com/netascode/bac-lab.git
     cd bac-lab
     ```
 
@@ -102,10 +102,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     cp .env.example .env
     ```
 
-3. Open `.env` in your editor. Update the values so they match your lab environment, using the value from Step 1 to replace the following lines.
-
-    !!! warning "Note"
-        The format pasted from Network Notes may not exactly match the `.env.example` template. You may need to adjust variable names or remove extra blank lines to ensure each line follows the `KEY=VALUE` format. Compare carefully with the template and make sure each variable is on its own line with no extra whitespace or comments between the `=` and the value.
+3. Open `.env` in your editor. Update the values so they match your lab environment, using the value from Step 1 to replace the following lines:
 
     ``` { .bash .no-copy }
     org_name=Org-XXXXXXXXXXXXXXXXXXX
@@ -144,7 +141,7 @@ Before cloning, confirm that **Unified Branch 1** and **Unified Branch 2** do **
     echo "API key set:      $([ -n "$MERAKI_API_KEY" ] && echo yes || echo NO)"
     echo "Branch 1 MX:      $branch1_mx_serial"
     echo "Branch 2 MX:      $branch2_mx_serial"
-
+    
     env | grep org_name
     ```
 
@@ -273,13 +270,15 @@ The first Terraform run merges all YAML data files into a single rendered config
 
 ## Step 5 — Plan and Deploy to Meraki
 
-Now run Terraform from the root of the project to deploy the branch networks.
+Now run Terraform to deploy the branch networks. You should already be in the repo root from Step 4.
 
-1. Initialize Terraform:
+1. Re-initialize Terraform only if needed:
 
     ```bash
     terraform init
     ```
+
+    If no Terraform files or module references changed since Step 4, you can skip this command.
 
     Expected output (truncated):
 
